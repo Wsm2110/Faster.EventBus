@@ -10,7 +10,7 @@ namespace Faster.EventBus.Core
     /// <typeparam name="TEvent">Event type.</typeparam>
     internal static class EventRoute<TEvent> where TEvent : IEvent
     {
-        private static ImmutableArray<Func<TEvent, CancellationToken, ValueTask>> _subscribers = [];
+        private static ImmutableArray<Func<TEvent, CancellationToken, ValueTask>> _subscribers = ImmutableArray<Func<TEvent, CancellationToken, ValueTask>>.Empty;
 
         /// <summary>
         /// Subscribes a handler function to this event type.

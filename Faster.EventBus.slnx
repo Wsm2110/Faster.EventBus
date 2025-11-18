@@ -12,6 +12,6 @@
     <Project Path="src/Faster.EventBus.csproj" />
   </Folder>
   <Folder Name="/tests/">
-    <Project Path="../Faster.EventBus.Tests/Faster.EventBus.Tests.csproj" />
+    <Project Path="tests/Faster.EventBus.Tests/Faster.EventBus.Tests.csproj" />
   </Folder>
 </Solution>
