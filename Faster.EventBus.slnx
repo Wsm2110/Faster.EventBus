@@ -5,6 +5,9 @@
   <Folder Name="/samples/">
     <Project Path="samples/Faster.EventBus.Samples/Faster.EventBus.Samples.csproj" />
   </Folder>
+  <Folder Name="/Solution Items/">
+    <File Path="readme.md" />
+  </Folder>
   <Folder Name="/src/">
     <Project Path="src/Faster.EventBus.csproj" />
   </Folder>

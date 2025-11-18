@@ -31,7 +31,7 @@ namespace EventBus.ConsoleSample
             Console.WriteLine($"CreateUser result: {result}");
 
             // 4. Publish an event
-            await bus.PublishEvent(new UserCreated("Alice"));
+            bus.PublishEvent(new UserCreated("Alice"));
 
             Console.WriteLine("Done. Press any key to exit.");
             Console.ReadKey();
