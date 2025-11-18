@@ -1,0 +1,14 @@
+<Solution>
+  <Folder Name="/benchmark/">
+    <Project Path="benchmark/Faster.EventBus.Benchmark/Faster.EventBus.Benchmark.csproj" />
+  </Folder>
+  <Folder Name="/samples/">
+    <Project Path="samples/Faster.EventBus.Samples/Faster.EventBus.Samples.csproj" />
+  </Folder>
+  <Folder Name="/src/">
+    <Project Path="src/Faster.EventBus.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="../Faster.EventBus.Tests/Faster.EventBus.Tests.csproj" />
+  </Folder>
+</Solution>
