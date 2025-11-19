@@ -2,7 +2,7 @@
 using System.Collections.Generic;
 using System.Text;
 
-namespace Faster.EventBus
+namespace Faster.EventBus.Core
 {
     public class EventBusOptions
     {

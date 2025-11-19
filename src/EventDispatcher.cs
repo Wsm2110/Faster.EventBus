@@ -37,7 +37,7 @@ namespace Faster.EventBus;
 /// // handlers are automatically registered on startup
 /// </code>
 /// </summary>
-public sealed class EventDispatcher
+public sealed class EventDispatcher : IEventDispatcher
 {
     /// <summary>
     /// DI provider used to resolve command handlers and event handlers.
@@ -62,6 +62,7 @@ public sealed class EventDispatcher
         if (options.Value.AutoScan)
         {
             AutoRegisterAllHandlers();
+            AutoScanEventHandlers();
         }
     }
 
@@ -98,7 +99,7 @@ public sealed class EventDispatcher
     /// bus.SubscribeEvent&lt;UserCreatedEvent&gt;();
     /// </code>
     /// </summary>
-    public void SubscribeEvent<TEvent>() where TEvent : IEvent
+    public void Subscribe<TEvent>() where TEvent : IEvent
     {
         var handlers = _provider.GetServices<IEventHandler<TEvent>>();
 
@@ -116,7 +117,7 @@ public sealed class EventDispatcher
     /// await bus.PublishEvent(new UserCreatedEvent(7));
     /// </code>
     /// </summary>
-    public void PublishEvent<TEvent>(TEvent evt, CancellationToken ct = default)
+    public void Publish<TEvent>(TEvent evt, CancellationToken ct = default)
         where TEvent : IEvent
     {
         EventRoute<TEvent>.Publish(evt, ct);
@@ -183,6 +184,36 @@ public sealed class EventDispatcher
                                                      i.GetGenericTypeDefinition() == ifaceType);
 
             BuildPipeline(iface.GetGenericArguments()[0], iface.GetGenericArguments()[1]);
+        }
+    }
+
+    private void AutoScanEventHandlers()
+    {
+        var eventHandlerInterface = typeof(IEventHandler<>);
+        var assemblies = AppDomain.CurrentDomain.GetAssemblies();
+
+        var handlers = assemblies.SelectMany(a => a.GetTypes())
+                                                   .Where(t => t.IsClass && !t.IsAbstract &&
+                                                          t.GetInterfaces().Any(i => i.IsGenericType &&
+                                                          i.GetGenericTypeDefinition() == eventHandlerInterface));
+
+        HashSet<Type> seen = new HashSet<Type>();
+
+        foreach (var handler in handlers)
+        {
+            var iface = handler.GetInterfaces().First(i => i.IsGenericType &&
+                                                     i.GetGenericTypeDefinition() == eventHandlerInterface);
+            var eventType = iface.GetGenericArguments()[0];
+            if (!seen.Add(eventType))
+            {
+                continue;
+            }
+
+            var subscribeMethod = typeof(EventDispatcher)
+                .GetMethod(nameof(Subscribe))!
+                .MakeGenericMethod(eventType);
+
+            subscribeMethod.Invoke(this, null);
         }
     }
 }

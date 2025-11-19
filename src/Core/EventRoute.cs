@@ -27,7 +27,7 @@ namespace Faster.EventBus.Core
         /// <summary>
         /// Publishes the event to all subscribers.
         /// </summary>
-        public async static ValueTask Publish(TEvent evt, CancellationToken ct)
+        public static void Publish(TEvent evt, CancellationToken ct)
         {
             var snapshot = _subscribers;
             if (snapshot.IsDefaultOrEmpty)
@@ -35,7 +35,7 @@ namespace Faster.EventBus.Core
                 return;
             }
 
-            var tasks = snapshot.Select(sub => sub(evt, ct).AsTask()).ToArray();
+            var tasks = snapshot.Select(sub => sub(evt, ct).AsTask());
 
             // Do NOT await them. This initiates the work and returns immediately.
             // Use Task.Run and ConfigureAwait(false) to offload the continuation 

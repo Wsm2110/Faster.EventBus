@@ -101,6 +101,26 @@ public class UserCreatedEventHandler : IEventHandler<UserCreatedEvent>
 }
 ```
 
+## 🧠 Why `IEventHandler<TEvent>` Must Be Registered as **Singletons**
+
+Event handlers represent **long-lived subscribers** to a stream of events.  
+A handler expresses an intention to receive **all occurrences** of a specific event during application execution.
+
+### ❌ Transient handlers do **not** make sense
+
+Transient services are short-lived and created per request or operation.  
+Attempting to subscribe a transient handler leads to:
+
+- 🔁 Re-subscribing every time the handler is constructed
+- 📈 Growing subscription lists
+- 🗑 Memory leaks and duplicated execution
+- 🤯 Hard-to-reason dependency lifecycle issues
+
+### ✔ Correct model
+
+Event handlers must be registered as **Singletons**, while their dependencies may be transient or scoped.
+
+
 ## Use in application
 ```csharp
 bus.SubscribeEvent<UserCreatedEvent>();
@@ -141,35 +161,3 @@ await bus.PublishEvent(new UserCreatedEvent(10));
 
 Fast, simple, reliable.  
 Perfect when performance matters.
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-

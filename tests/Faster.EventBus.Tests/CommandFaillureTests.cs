@@ -63,10 +63,7 @@ public class CommandFailureTests
         {
             options.AutoScan = true;
         });
-
-        services.AddSingleton<ICommandHandler<FailCommand, Result>, FailCommandHandler>();
-        services.AddSingleton<EventDispatcher>();
-
+     
         //leftovers...
         services.AddSingleton<IList<string>, List<string>>();
         services.AddSingleton<MyDependency>();
