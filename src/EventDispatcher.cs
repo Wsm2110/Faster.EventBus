@@ -43,6 +43,7 @@ public sealed class EventDispatcher : IEventDispatcher
     /// DI provider used to resolve command handlers and event handlers.
     /// </summary>
     private readonly IServiceProvider _provider;
+    private readonly IOptions<EventBusOptions> _options;
 
     /// <summary>
     /// Cache of compiled delegates for command handler pipelines.
@@ -58,13 +59,23 @@ public sealed class EventDispatcher : IEventDispatcher
     public EventDispatcher(IServiceProvider provider, IOptions<EventBusOptions> options)
     {
         _provider = provider ?? throw new ArgumentNullException(nameof(provider));
+        _options = options;
+    }
 
-        if (options.Value.AutoScan)
+    /// <summary>
+    /// Initialize the eventbus
+    /// </summary>
+    /// <returns></returns>
+    public IEventDispatcher Initialize()
+    {
+        if (_options.Value.AutoScan)
         {
             AutoRegisterAllHandlers();
             AutoScanEventHandlers();
         }
-    }
+
+        return this;
+    }   
 
     /// <summary>
     /// Sends a command and returns a response value asynchronously.

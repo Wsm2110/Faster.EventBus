@@ -12,7 +12,6 @@ namespace Faster.EventBus.Extensions;
 
 public static class ServiceProviderExtensions
 {
-
     /// <summary>
     /// Registers the <see cref="EventDispatcher"/> and scans assemblies for handlers implementing:
     /// <list type="bullet">
@@ -47,10 +46,8 @@ public static class ServiceProviderExtensions
         if (assemblies == null || assemblies.Length == 0)
             assemblies = new[] { Assembly.GetCallingAssembly() };
 
-
-
         // Always register dispatcher
-        services.AddSingleton<EventDispatcher>();
+        services.AddSingleton<IEventDispatcher, EventDispatcher>();
 
         // Only auto-register handlers if AutoScan == true
         if (options.AutoScan)

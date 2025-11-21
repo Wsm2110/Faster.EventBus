@@ -56,7 +56,7 @@ services.AddEventBus(options => options.AutoRegister = true);
 services.AddTransient<ICommandHandler<GetUserNameCommand, Result<string>>, GetUserNameCommandHandler>();
 
 var provider = services.BuildServiceProvider();
-var bus = provider.GetRequiredService<EventDispatcher>();
+var bus = provider.GetRequiredService<IEventDispatcher>().Initialize();
 ```
 
 ## 🚀 Send a Command

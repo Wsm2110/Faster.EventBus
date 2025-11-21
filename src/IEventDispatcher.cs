@@ -8,5 +8,6 @@ namespace Faster.EventBus
         void RegisterCommandHandler<THandler>();
         ValueTask<TResponse> Send<TResponse>(ICommand<TResponse> command, CancellationToken ct = default);
         void Subscribe<TEvent>() where TEvent : IEvent;
+        IEventDispatcher Initialize();
     }
 }

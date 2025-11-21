@@ -23,7 +23,8 @@ public class PipelineBehaviorTests
         services.AddSingleton<EventDispatcher>();
 
         var provider = services.BuildServiceProvider();
-        var bus = provider.GetRequiredService<EventDispatcher>();
+        var bus = provider.GetRequiredService<IEventDispatcher>()
+            .Initialize();
 
         await bus.Send(new TestPipeline());
 
@@ -50,7 +51,7 @@ public class PipelineBehaviorTests
         services.AddSingleton<EventDispatcher>();
 
         var provider = services.BuildServiceProvider();
-        var bus = provider.GetRequiredService<EventDispatcher>();
+        var bus = provider.GetRequiredService<IEventDispatcher>().Initialize();
 
         // Required since auto register is off
         bus.RegisterCommandHandler<PipelineTestHandler>();

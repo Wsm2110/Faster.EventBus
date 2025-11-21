@@ -20,7 +20,7 @@ public class EventDispatcherAsyncCommandHandlerTests
 
         var provider = services.BuildServiceProvider();
 
-        var bus = provider.GetRequiredService<EventDispatcher>();
+        var bus = provider.GetRequiredService<IEventDispatcher>();
 
         bus.RegisterCommandHandler<GetUserNameCommandHandler>();
 
@@ -43,7 +43,7 @@ public class EventDispatcherAsyncCommandHandlerTests
         services.AddSingleton<MyDependency>();
 
         var provider = services.BuildServiceProvider();
-        var bus = provider.GetRequiredService<EventDispatcher>();
+        var bus = provider.GetRequiredService<IEventDispatcher>().Initialize();
 
         // Act
         var result = await bus.Send(new GetUserNameCommand(-1));
@@ -65,7 +65,7 @@ public class EventDispatcherAsyncCommandHandlerTests
         services.AddSingleton<MyDependency>();
 
         var provider = services.BuildServiceProvider();
-        var bus = provider.GetRequiredService<EventDispatcher>();
+        var bus = provider.GetRequiredService<IEventDispatcher>().Initialize();
 
 
         string? matchOutput = null;

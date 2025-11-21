@@ -21,7 +21,7 @@ public class CommandFailureTests
         services.AddSingleton<EventDispatcher>();
 
         var provider = services.BuildServiceProvider();
-        var bus = provider.GetRequiredService<EventDispatcher>();
+        var bus = provider.GetRequiredService<IEventDispatcher>().Initialize();
 
         bus.RegisterCommandHandler<FailCommandHandler>();
 
@@ -46,7 +46,7 @@ public class CommandFailureTests
         services.AddSingleton<MyDependency>();
 
         var provider = services.BuildServiceProvider();
-        var bus = provider.GetRequiredService<EventDispatcher>();
+        var bus = provider.GetRequiredService<IEventDispatcher>().Initialize();
 
         var result = await bus.Send(new FailCommand());
 
@@ -69,7 +69,8 @@ public class CommandFailureTests
         services.AddSingleton<MyDependency>();
 
         var provider = services.BuildServiceProvider();
-        var bus = provider.GetRequiredService<EventDispatcher>();
+        var bus = provider.GetRequiredService<IEventDispatcher>()
+            .Initialize();
 
         var result = await bus.Send(new FailCommand());
 

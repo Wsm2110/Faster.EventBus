@@ -45,7 +45,7 @@ public class DependencyInjectionTests
 
         services.AddSingleton<EventDispatcher>();
         var provider = services.BuildServiceProvider();
-        var bus = provider.GetRequiredService<EventDispatcher>();
+        var bus = provider.GetRequiredService<IEventDispatcher>().Initialize();
 
         bus.RegisterCommandHandler<InjectedCommandHandler>();
 
@@ -69,7 +69,7 @@ public class DependencyInjectionTests
         services.AddSingleton<EventDispatcher>();
 
         var provider = services.BuildServiceProvider();
-        var bus = provider.GetRequiredService<EventDispatcher>();
+        var bus = provider.GetRequiredService<IEventDispatcher>().Initialize();
 
         // Act
         var result = await bus.Send(new InjectedCommand(5));

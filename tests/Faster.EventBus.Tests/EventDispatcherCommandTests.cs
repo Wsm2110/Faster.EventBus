@@ -22,7 +22,7 @@ namespace Faster.EventBus.Tests
             services.AddSingleton<EventDispatcher>();
 
             var provider = services.BuildServiceProvider();
-            var bus = provider.GetRequiredService<EventDispatcher>();
+            var bus = provider.GetRequiredService<IEventDispatcher>().Initialize();
 
             bus.RegisterCommandHandler<AddValueCommandHandler>();
 
@@ -49,7 +49,7 @@ namespace Faster.EventBus.Tests
             services.AddSingleton<MyDependency>();
 
             var provider = services.BuildServiceProvider();
-            var bus = provider.GetRequiredService<EventDispatcher>();
+            var bus = provider.GetRequiredService<IEventDispatcher>().Initialize();
 
             // Act
             var result = await bus.Send(new AddValueCommand(10));
@@ -73,7 +73,7 @@ namespace Faster.EventBus.Tests
             services.AddSingleton<EventDispatcher>();
 
             var provider = services.BuildServiceProvider();
-            var bus = provider.GetRequiredService<EventDispatcher>();
+            var bus = provider.GetRequiredService<IEventDispatcher>().Initialize();
 
             bus.RegisterCommandHandler<AddValueCommandHandler>();
 

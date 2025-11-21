@@ -19,7 +19,7 @@ namespace EventBus.ConsoleSample
             services.AddEventBus(options => options.AutoScan = true);
                      
             var provider = services.BuildServiceProvider();
-            var bus = provider.GetRequiredService<EventDispatcher>();
+            var bus = provider.GetRequiredService<IEventDispatcher>().Initialize();
       
             // 3. send first command
             var result = await bus.Send(new SendLog("severity:fatal,something terrible happend"));

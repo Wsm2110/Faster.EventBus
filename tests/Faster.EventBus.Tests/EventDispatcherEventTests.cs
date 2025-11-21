@@ -1,8 +1,6 @@
 ﻿using Faster.EventBus.Contracts;
-using Faster.EventBus.Core;
 using Faster.EventBus.Extensions;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Options;
 
 namespace Faster.EventBus.Tests;
 
@@ -25,7 +23,7 @@ public class EventDispatcherEventTests
         services.AddSingleton<EventDispatcher>();
 
         var provider = services.BuildServiceProvider();
-        var bus = provider.GetRequiredService<EventDispatcher>();
+        var bus = provider.GetRequiredService<IEventDispatcher>().Initialize();
 
         bus.Subscribe<NumberAddedEvent>();
 
@@ -37,6 +35,7 @@ public class EventDispatcherEventTests
         Assert.Equal(99, handler2.LastValue);
     }
 
+}
 // 2. Event and Handler Implementations
 public record UserCreatedEvent(int UserId) : IEvent;
 
