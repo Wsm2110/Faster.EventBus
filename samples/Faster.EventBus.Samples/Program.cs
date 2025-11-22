@@ -1,6 +1,8 @@
 using Faster.EventBus;
+using Faster.EventBus.Contracts;
 using Faster.EventBus.Extensions;
 using Faster.EventBus.Samples.Commands;
+using Faster.EventBus.Shared;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace EventBus.ConsoleSample
@@ -16,11 +18,11 @@ namespace EventBus.ConsoleSample
 
             // 1. Setup DI container
             var services = new ServiceCollection();
-            services.AddEventBus(options => options.AutoScan = true);
-                     
+            services.AddEventBus();
+
             var provider = services.BuildServiceProvider();
             var bus = provider.GetRequiredService<IEventBus>();
-      
+
             // 3. send first command
             var result = await bus.Send(new SendLog("severity:fatal,something terrible happend"));
             Console.WriteLine($"CreateUser result: {result}");
@@ -32,6 +34,10 @@ namespace EventBus.ConsoleSample
 
             // 4. Publish an event
             bus.Publish(new UserCreated("Alice"));
+
+            // 5. Orchestrate many commandhandlers aka Usecae
+            result = await bus.Run<CheckoutRequest, Result>(new CheckoutRequest(Guid.NewGuid()));
+            Console.WriteLine($"Checkout result: {result.IsSuccess}");
 
             Console.WriteLine("Done. Press any key to exit.");
             Console.ReadKey();

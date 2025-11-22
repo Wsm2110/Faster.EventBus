@@ -57,3 +57,8 @@ public delegate ValueTask<TResponse> CommandPipeline<TResponse>(
     ICommand<TResponse> command,
     CancellationToken ct
 );
+
+public delegate ValueTask<TResponse> UseCasePipeline<TResponse>(
+    IServiceProvider provider,
+    object request,
+    CancellationToken ct);

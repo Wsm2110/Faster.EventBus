@@ -28,8 +28,7 @@ namespace Faster.EventBus.Contracts
     /// <typeparam name="TCommand">The type of the command being processed.</typeparam>
     /// <typeparam name="TResponse">The type returned by executing the command.</typeparam>
     public interface IPipelineBehavior<in TCommand, TResponse>
-        where TCommand : ICommand<TResponse>
-    {
+        where TCommand : ICommand<TResponse> {
         /// <summary>
         /// Handles the command or delegates execution to the next step in the pipeline.
         /// A behavior can inspect or modify the command, perform logic before or after

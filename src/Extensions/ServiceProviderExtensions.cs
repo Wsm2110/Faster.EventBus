@@ -43,10 +43,13 @@ public static class ServiceProviderExtensions
         services.AddSingleton<IEventBus, EventBus>();
         services.AddSingleton<ICommandDispatcher, CommandDispatcher>();
         services.AddSingleton<IEventDispatcher, EventDispatcher>();
+        services.AddSingleton<IUseCaseDispatcher, UseCaseDispatcher>();
+
 
         var commandHandlerType = typeof(ICommandHandler<,>);
         var eventHandlerType = typeof(IEventHandler<>);
         var behaviorType = typeof(IPipelineBehavior<,>);
+        var useCaseType = typeof(IUseCaseHandler<,>);
 
         foreach (var type in assemblies.SelectMany(a => a.GetTypes()))
         {
@@ -62,8 +65,8 @@ public static class ServiceProviderExtensions
 
                 if (genericDef == commandHandlerType ||
                     genericDef == eventHandlerType ||
-                    genericDef == behaviorType)
-
+                    genericDef == behaviorType ||
+                    genericDef == useCaseType)
                 {
                     services.AddSingleton(iface, type);
                 }

@@ -1,4 +1,5 @@
-﻿using System;
+﻿using Faster.EventBus.Core;
+using System;
 using System.Threading;
 
 namespace Faster.EventBus.Contracts
@@ -44,5 +45,9 @@ namespace Faster.EventBus.Contracts
         /// <param name="ct">Optional cancellation token.</param>
         /// <returns>A <see cref="ValueTask{TResponse}"/> representing the asynchronous command result.</returns>
         ValueTask<TResponse> Send<TResponse>(ICommand<TResponse> command, CancellationToken ct = default);
+
+
+        ValueTask<TResponse> Run<TRequest, TResponse>(TRequest request, CancellationToken ct = default);
+
     }
 }

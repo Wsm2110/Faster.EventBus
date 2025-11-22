@@ -1,6 +1,7 @@
 ﻿using Faster.EventBus.Contracts;
 using Faster.EventBus.Core;
 using Faster.EventBus.Samples.Commands;
+using Faster.EventBus.Shared;
 
 namespace Faster.EventBus.Samples.Handlers
 {

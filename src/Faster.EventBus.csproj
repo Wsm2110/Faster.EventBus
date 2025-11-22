@@ -6,7 +6,7 @@
     <LangVersion>Latest</LangVersion>
     <!-- NuGet packaging metadata -->
     <PackageId>Faster.EventBus</PackageId>
-    <Version>0.1.1</Version>
+    <Version>0.1.2</Version>
     <Authors>Wiljan Ruizendaal</Authors>
     <Company>Faster Framework</Company>
     <Description>

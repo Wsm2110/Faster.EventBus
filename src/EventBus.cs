@@ -17,7 +17,10 @@ namespace Faster.EventBus;
 /// The purpose of this abstraction is to provide convenience and decouple consumers
 /// from the internal implementation details of pipelines and dispatching.
 /// </summary>
-public sealed class EventBus(ICommandDispatcher CommandDispatcher, IEventDispatcher EventDispatcher) : IEventBus
+public sealed class EventBus(
+    ICommandDispatcher CommandDispatcher, 
+    IEventDispatcher EventDispatcher,
+    IUseCaseDispatcher UseCaseDispatcher) : IEventBus
 {
     /// <summary>
     /// Sends a command through the command pipeline and returns a response.
@@ -33,6 +36,11 @@ public sealed class EventBus(ICommandDispatcher CommandDispatcher, IEventDispatc
         // Dispatch command execution via the command sender abstraction.
         return CommandDispatcher.Send(command, ct);
     }
+
+    public ValueTask<TResponse> Run<TRequest, TResponse>(
+      TRequest request,
+      CancellationToken ct = default)
+      => UseCaseDispatcher.Execute<TRequest, TResponse>(request, ct);
 
     /// <summary>
     /// Publishes an event to all registered event handlers for its type.
