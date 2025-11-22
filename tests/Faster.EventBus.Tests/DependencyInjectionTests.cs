@@ -1,7 +1,6 @@
-﻿using Faster.EventBus;
-using Faster.EventBus.Contracts;
-using Faster.EventBus.Core;
+﻿using Faster.EventBus.Contracts;
 using Faster.EventBus.Extensions;
+using Faster.EventBus.Shared;
 using Microsoft.Extensions.DependencyInjection;
 using Xunit;
 
@@ -38,16 +37,14 @@ public class DependencyInjectionTests
     {
         // Arrange
         var services = new ServiceCollection();
-        services.AddEventBus(options => options.AutoScan = false);
+        services.AddEventBus();
 
         services.AddSingleton<MyDependency>();
         services.AddSingleton<ICommandHandler<InjectedCommand, Result<int>>, InjectedCommandHandler>();
 
-        services.AddSingleton<EventDispatcher>();
+        services.AddSingleton<EventBus>();
         var provider = services.BuildServiceProvider();
-        var bus = provider.GetRequiredService<IEventDispatcher>().Initialize();
-
-        bus.RegisterCommandHandler<InjectedCommandHandler>();
+        var bus = provider.GetRequiredService<IEventBus>();
 
         // Act
         var result = await bus.Send(new InjectedCommand(5));
@@ -62,14 +59,14 @@ public class DependencyInjectionTests
     {
         // Arrange
         var services = new ServiceCollection();
-        services.AddEventBus(options => options.AutoScan = true);
+        services.AddEventBus();
 
         services.AddSingleton<MyDependency>();
         services.AddSingleton<IList<string>, List<string>>();
-        services.AddSingleton<EventDispatcher>();
+        services.AddSingleton<EventBus>();
 
         var provider = services.BuildServiceProvider();
-        var bus = provider.GetRequiredService<IEventDispatcher>().Initialize();
+        var bus = provider.GetRequiredService<IEventBus>();
 
         // Act
         var result = await bus.Send(new InjectedCommand(5));

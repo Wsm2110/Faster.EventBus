@@ -1,6 +1,6 @@
 ﻿using Faster.EventBus.Contracts;
-using Faster.EventBus.Core;
 using Faster.EventBus.Extensions;
+using Faster.EventBus.Shared;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace Faster.EventBus.Tests;
@@ -12,18 +12,15 @@ public class CommandFailureTests
     {
         var services = new ServiceCollection();
 
-        services.AddEventBus(configure: (options) =>
-        {
-            options.AutoScan = false;
-        });
+        services.AddEventBus();
 
         services.AddSingleton<ICommandHandler<FailCommand, Result>, FailCommandHandler>();
-        services.AddSingleton<EventDispatcher>();
+        services.AddSingleton<EventBus>();
 
         var provider = services.BuildServiceProvider();
-        var bus = provider.GetRequiredService<IEventDispatcher>().Initialize();
+        var bus = provider.GetRequiredService<IEventBus>();
 
-        bus.RegisterCommandHandler<FailCommandHandler>();
+      //  bus.RegisterCommandHandler<FailCommandHandler>();
 
         var result = await bus.Send(new FailCommand());
 
@@ -36,17 +33,14 @@ public class CommandFailureTests
     {
         var services = new ServiceCollection();
 
-        services.AddEventBus(configure: (options) =>
-        {
-            options.AutoScan = true;
-        });
+        services.AddEventBus();
 
-        services.AddSingleton<EventDispatcher>();
+        services.AddSingleton<EventBus>();
         services.AddSingleton<IList<string>, List<string>>();
         services.AddSingleton<MyDependency>();
 
         var provider = services.BuildServiceProvider();
-        var bus = provider.GetRequiredService<IEventDispatcher>().Initialize();
+        var bus = provider.GetRequiredService<IEventBus>();
 
         var result = await bus.Send(new FailCommand());
 
@@ -59,18 +53,14 @@ public class CommandFailureTests
     {
         var services = new ServiceCollection();
 
-        services.AddEventBus(configure: (options) =>
-        {
-            options.AutoScan = true;
-        });
+        services.AddEventBus();
      
         //leftovers...
         services.AddSingleton<IList<string>, List<string>>();
         services.AddSingleton<MyDependency>();
 
         var provider = services.BuildServiceProvider();
-        var bus = provider.GetRequiredService<IEventDispatcher>()
-            .Initialize();
+        var bus = provider.GetRequiredService<IEventBus>();           
 
         var result = await bus.Send(new FailCommand());
 

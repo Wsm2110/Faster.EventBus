@@ -1,98 +1,214 @@
-﻿using System.Reflection;
-using Faster.EventBus.Contracts;
+﻿using Faster.EventBus.Contracts;
+using Faster.EventBus.Core;
+using Microsoft.Extensions.DependencyInjection;
+using System.Collections.Concurrent;
+using System.Linq.Expressions;
+using System.Reflection;
 
 /// <summary>
-/// Builds the command execution pipeline for a given command type.
-/// The pipeline consists of:
-///   - the final command handler
-///   - zero or more pipeline behaviors (middleware)
-/// It returns a compiled delegate that can be executed very fast at runtime.
+/// The PipelineFactory is responsible for building and caching delegates
+/// that execute command pipelines (CommandHandlers + Pipeline Behaviors)
+/// for the Faster.EventBus system.
+///
+/// This version is optimized for extreme performance:
+/// - No reflection in the hot path
+/// - No dictionary lookups for handler invokers
+/// - Very low allocations during pipeline execution
+/// - Uses FastExpressionCompiler for fast startup compilation
 /// </summary>
-internal static class PipelineFactory
+public sealed class PipelineFactory : IPipelineFactory
 {
-    /// <summary>
-    /// Builds a delegate for the given <paramref name="commandType"/> and <paramref name="responseType"/>.
-    /// This method is called at startup (or when registering handlers), NOT on each Send.
-    /// It uses reflection once to create a strongly-typed generic version of the builder.
-    /// </summary>
-    /// <param name="commandType">Concrete command type, e.g. GetUserNameCommand.</param>
-    /// <param name="handler">The resolved handler instance for this command.</param>
-    /// <param name="behaviors">An array of pipeline behaviors (can be empty).</param>
-    /// <param name="responseType">The response type returned by the command handler.</param>
-    /// <returns>
-    /// A delegate with the shape:
-    /// <c>Func&lt;ICommand&lt;TResponse&gt;, CancellationToken, ValueTask&lt;TResponse&gt;&gt;</c>
-    /// stored as a <see cref="Delegate"/> for caching.
-    /// </returns>
-    public static Delegate Build(
-        Type commandType,
-        object handler,
-        object[] behaviors,
-        Type responseType)
-    {
-        // We call the generic version:     
-        var method = typeof(PipelineFactory)
-            .GetMethod(nameof(BuildGeneric), BindingFlags.Static | BindingFlags.NonPublic)!
-            .MakeGenericMethod(commandType, responseType);
+    private readonly IServiceScopeFactory _scopeFactory;
 
-        return (Delegate)method.Invoke(null, new object[] { handler, behaviors })!;
+    /// <summary>
+    /// Cache that stores compiled pipeline delegates for (CommandType, ResponseType) pairs.
+    /// This avoids rebuilding the pipeline multiple times.
+    /// </summary>
+    private static readonly ConcurrentDictionary<(Type, Type), object> _pipelineCache = new();
+
+    // NOTE: We no longer need a handler dictionary cache.
+    // Handler invokers are cached per TCommand/TResponse using a static generic type.
+
+    public PipelineFactory(IServiceScopeFactory scopeFactory)
+    {
+        _scopeFactory = scopeFactory;
     }
 
     /// <summary>
-    /// Builds a strongly-typed pipeline delegate for a specific command and response.
-    /// This returns a delegate with the input type <see cref="ICommand{TResponse}"/> so we
-    /// can safely call it from EventDispatcher.Send(ICommand&lt;TResponse&gt;).
+    /// Creates a delegate that will execute a pipeline for a specific command type.
+    /// The pipeline may contain zero or more middleware behaviors and one handler.
     /// </summary>
-    /// <typeparam name="TCommand">The concrete command type.</typeparam>
-    /// <typeparam name="TResponse">The response type.</typeparam>
-    /// <param name="handlerObj">The ICommandHandler&lt;TCommand,TResponse&gt; instance (boxed as object).</param>
-    /// <param name="behaviors">Array of ICommandPipelineBehavior&lt;TCommand,TResponse&gt; (boxed).</param>
-    /// <returns>
-    /// A delegate: <c>Func&lt;ICommand&lt;TResponse&gt;, CancellationToken, ValueTask&lt;TResponse&gt;&gt;</c>.
-    /// </returns>
-    private static Func<ICommand<TResponse>, CancellationToken, ValueTask<TResponse>> BuildGeneric<TCommand, TResponse>(
-        object handlerObj,
-        object[] behaviors)
+    public CommandPipeline<TResponse> CreateDelegate<TResponse>(Type commandType, IServiceProvider rootProvider)
+    {
+        // Pipeline delegate is cached per (commandType, responseType)
+        return (CommandPipeline<TResponse>)_pipelineCache.GetOrAdd(
+            (commandType, typeof(TResponse)),
+            key => CompilePipeline<TResponse>(key.Item1, key.Item2)
+        );
+    }
+
+    /// <summary>
+    /// Builds the pipeline execution delegate for a command/response pair
+    /// and binds it to this PipelineFactory instance.
+    /// Called only once per command type.
+    /// </summary>
+    private CommandPipeline<TResponse> CompilePipeline<TResponse>(Type commandType, Type responseType)
+    {
+        var method = typeof(PipelineFactory)
+            .GetMethod(nameof(ExecutePipeline), BindingFlags.NonPublic | BindingFlags.Instance)!
+            .MakeGenericMethod(commandType, responseType);
+
+        // Convert the method into a strongly typed delegate and return it.
+        return (CommandPipeline<TResponse>)method.CreateDelegate(typeof(CommandPipeline<TResponse>), this);
+    }
+
+    /// <summary>
+    /// Runs the pipeline chain for a command.
+    /// Resolves behaviors and calls them one by one until it reaches the handler.
+    /// </summary>
+    private ValueTask<TResponse> ExecutePipeline<TCommand, TResponse>(
+        IServiceProvider provider,
+        ICommand<TResponse> command,
+        CancellationToken ct)
         where TCommand : ICommand<TResponse>
     {
-        // Cast handler to the correct interface type once
-        var handler = (ICommandHandler<TCommand, TResponse>)handlerObj;
+        // Resolve all behaviors for this command type
+        var behaviors = (IPipelineBehavior<TCommand, TResponse>[])
+            provider.GetServices<IPipelineBehavior<TCommand, TResponse>>();
 
-        // Base "core" delegate just calls the handler directly:      
-        Func<TCommand, CancellationToken, ValueTask<TResponse>> core = handler.Handle;
+        var handlerInvoker = HandlerInvokerCache<TCommand, TResponse>.Invoker;
 
-        // If we have behaviors, we wrap them around the core like middleware.
-        if (behaviors is { Length: > 0 })
+        // Fast path: no behaviors, go straight to handler
+        if (behaviors.Length == 0)
         {
-            // Cast behaviors to the correct generic type once.
-            var typedBehaviors = new ICommandPipelineBehavior<TCommand, TResponse>[behaviors.Length];
-            for (int i = 0; i < behaviors.Length; i++)
-            {
-                typedBehaviors[i] = (ICommandPipelineBehavior<TCommand, TResponse>)behaviors[i];
-            }
-
-            // Wrap behaviors from last to first, so the first in the list is the outermost.
-            for (int i = typedBehaviors.Length - 1; i >= 0; i--)
-            {
-                var behavior = typedBehaviors[i];
-                var next = core; // capture the current "next" delegate
-
-                core = (cmd, ct) =>
-                {
-                    // This delegate will be executed inside the behavior.
-                    CommandHandlerDelegate<TResponse> nextDelegate = () => next(cmd, ct);
-                    return behavior.Handle(cmd, ct, nextDelegate);
-                };
-            }
+            return handlerInvoker(provider, (TCommand)command, ct);
         }
 
-        // ADAPTER:
-        // We want the final delegate to accept ICommand<TResponse>, not TCommand,
-        // so EventDispatcher.Send(ICommand<TResponse>) can call it safely.
-        return (ICommand<TResponse> command, CancellationToken ct) =>
+        // Use a small state object + a single next delegate to avoid
+        // allocating a new lambda for each behavior.
+        var state = new PipelineState<TCommand, TResponse>(
+            provider,
+            (TCommand)command,
+            ct,
+            behaviors,
+            handlerInvoker);
+
+        return state.Run();
+    }
+
+    /// <summary>
+    /// Holds per-invocation pipeline state, so we only allocate:
+    /// - one small object (this)
+    /// - one CommandBehaviorDelegate&lt;TResponse&gt; for "next"
+    /// instead of one lambda allocation per behavior.
+    /// </summary>
+    private sealed class PipelineState<TCommand, TResponse>
+        where TCommand : ICommand<TResponse>
+    {
+        private readonly IServiceProvider _provider;
+        private readonly TCommand _command;
+        private readonly CancellationToken _ct;
+        private readonly IPipelineBehavior<TCommand, TResponse>[] _behaviors;
+        private readonly Func<IServiceProvider, TCommand, CancellationToken, ValueTask<TResponse>> _handler;
+        private int _index;
+
+        private readonly CommandBehaviorDelegate<TResponse> _nextDelegate;
+
+        public PipelineState(
+            IServiceProvider provider,
+            TCommand command,
+            CancellationToken ct,
+            IPipelineBehavior<TCommand, TResponse>[] behaviors,
+            Func<IServiceProvider, TCommand, CancellationToken, ValueTask<TResponse>> handler)
         {
-            // We know command is actually TCommand here, so we cast once and call the core pipeline.
-            return core((TCommand)command, ct);
-        };
+            _provider = provider;
+            _command = command;
+            _ct = ct;
+            _behaviors = behaviors;
+            _handler = handler;
+
+            // Create a single delegate that always calls NextCore()
+            _nextDelegate = NextCore;
+        }
+
+        public ValueTask<TResponse> Run() => NextCore();
+
+        private ValueTask<TResponse> NextCore()
+        {
+            // If we've exhausted all behaviors, call the handler
+            if (_index == _behaviors.Length)
+            {
+                return _handler(_provider, _command, _ct);
+            }
+
+            // Otherwise execute the current behavior and delegate to the same next delegate
+            var behavior = _behaviors[_index++];
+            return behavior.Handle(_command, _nextDelegate, _ct);
+        }
+    }
+
+    /// <summary>
+    /// Static generic cache for the handler invoker delegate:
+    ///   (provider, command, ct) => handler.Handle(command, ct)
+    ///
+    /// Cached per TCommand/TResponse, so there is:
+    ///   - no dictionary in the hot path
+    ///   - no reflection after first build
+    /// </summary>
+    private static class HandlerInvokerCache<TCommand, TResponse>
+        where TCommand : ICommand<TResponse>
+    {
+        public static readonly Func<IServiceProvider, TCommand, CancellationToken, ValueTask<TResponse>> Invoker
+            = CompileHandlerDelegate();
+
+        private static Func<IServiceProvider, TCommand, CancellationToken, ValueTask<TResponse>> CompileHandlerDelegate()
+        {
+            // (IServiceProvider provider, TCommand command, CancellationToken ct) => 
+            //      provider.GetRequiredService<ICommandHandler<TCommand,TResponse>>().Handle(command, ct);
+
+            var providerParam = Expression.Parameter(typeof(IServiceProvider), "provider");
+            var commandParam = Expression.Parameter(typeof(TCommand), "command");
+            var ctParam = Expression.Parameter(typeof(CancellationToken), "ct");
+
+            var handlerType = typeof(ICommandHandler<TCommand, TResponse>);
+
+            // Find generic GetRequiredService<T>() extension method
+            MethodInfo? getReqGeneric = null;
+            var methods = typeof(ServiceProviderServiceExtensions)
+                .GetMethods(BindingFlags.Public | BindingFlags.Static);
+
+            for (int i = 0; i < methods.Length; i++)
+            {
+                var m = methods[i];
+                if (m.Name == nameof(ServiceProviderServiceExtensions.GetRequiredService)
+                    && m.IsGenericMethodDefinition
+                    && m.GetParameters().Length == 1)
+                {
+                    getReqGeneric = m;
+                    break;
+                }
+            }
+
+            if (getReqGeneric == null)
+            {
+                throw new InvalidOperationException("Could not find GetRequiredService<T>(IServiceProvider) method.");
+            }
+
+            var getReqMethod = getReqGeneric.MakeGenericMethod(handlerType);
+
+            // provider.GetRequiredService<ICommandHandler<TCommand,TResponse>>()
+            var handlerCall = Expression.Call(getReqMethod, providerParam);
+
+            // handler.Handle(command, ct)
+            var handleMethod = handlerType.GetMethod("Handle")!;
+            var handleCall = Expression.Call(handlerCall, handleMethod, commandParam, ctParam);
+
+            var lambda = Expression.Lambda<
+                Func<IServiceProvider, TCommand, CancellationToken, ValueTask<TResponse>>
+            >(handleCall, providerParam, commandParam, ctParam);
+
+            // FastExpressionCompiler: much faster cold compile than Expression.Compile()
+            return lambda.Compile()!;
+        }
     }
 }

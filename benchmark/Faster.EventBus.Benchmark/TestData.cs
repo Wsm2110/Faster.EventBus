@@ -1,5 +1,5 @@
 ﻿using Faster.EventBus.Contracts;
-using Faster.EventBus.Core;
+using Faster.EventBus.Shared;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -12,14 +12,3 @@ public sealed class TestResultHandler :
         => ValueTask.FromResult(Result<string>.Success($"User-{cmd.Id}"));
 }
 
-public sealed class ResultBehavior :
-    ICommandPipelineBehavior<TestResultCommand, Result<string>>
-{
-    public async ValueTask<Result<string>> Handle(
-        TestResultCommand cmd,
-        CancellationToken ct,
-        CommandHandlerDelegate<Result<string>> next)
-    {
-        return await next();
-    }
-}

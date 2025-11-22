@@ -1,6 +1,6 @@
 ﻿using Faster.EventBus.Contracts;
-using Faster.EventBus.Core;
 using Faster.EventBus.Extensions;
+using Faster.EventBus.Shared;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace Faster.EventBus.Tests;
@@ -12,7 +12,7 @@ public class EventDispatcherAsyncCommandHandlerTests
     {
         // Arrange
         var services = new ServiceCollection();
-        services.AddEventBus(opt => opt.AutoScan = false);
+        services.AddEventBus();
         services.AddTransient<ICommandHandler<GetUserNameCommand, Result<string>>, GetUserNameCommandHandler>();
 
         //leftovers  from previous testcases
@@ -20,9 +20,7 @@ public class EventDispatcherAsyncCommandHandlerTests
 
         var provider = services.BuildServiceProvider();
 
-        var bus = provider.GetRequiredService<IEventDispatcher>();
-
-        bus.RegisterCommandHandler<GetUserNameCommandHandler>();
+        var bus = provider.GetRequiredService<IEventBus>();
 
         // Act
         var result = await bus.Send(new GetUserNameCommand(5));
@@ -37,13 +35,13 @@ public class EventDispatcherAsyncCommandHandlerTests
     {
         // Arrange
         var services = new ServiceCollection();
-        services.AddEventBus(opt => opt.AutoScan = true);
+        services.AddEventBus();
 
         services.AddSingleton<IList<string>, List<string>>();
         services.AddSingleton<MyDependency>();
 
         var provider = services.BuildServiceProvider();
-        var bus = provider.GetRequiredService<IEventDispatcher>().Initialize();
+        var bus = provider.GetRequiredService<IEventBus>();
 
         // Act
         var result = await bus.Send(new GetUserNameCommand(-1));
@@ -58,14 +56,14 @@ public class EventDispatcherAsyncCommandHandlerTests
     {
         // Arrange
         var services = new ServiceCollection();
-        services.AddEventBus(opt => opt.AutoScan = true);
+        services.AddEventBus();
 
         // Auto scan also scanns handlers from other tests, thus this leftover 
         services.AddSingleton<IList<string>, List<string>>();
         services.AddSingleton<MyDependency>();
 
         var provider = services.BuildServiceProvider();
-        var bus = provider.GetRequiredService<IEventDispatcher>().Initialize();
+        var bus = provider.GetRequiredService<IEventBus>();
 
 
         string? matchOutput = null;

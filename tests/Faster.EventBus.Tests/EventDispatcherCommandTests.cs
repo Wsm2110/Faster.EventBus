@@ -1,6 +1,6 @@
 ﻿using Faster.EventBus.Contracts;
-using Faster.EventBus.Core;
 using Faster.EventBus.Extensions;
+using Faster.EventBus.Shared;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace Faster.EventBus.Tests
@@ -13,18 +13,13 @@ namespace Faster.EventBus.Tests
             // Arrange
             var services = new ServiceCollection();
 
-            services.AddEventBus(configure: (options) =>
-            {
-                options.AutoScan = false;
-            });
+            services.AddEventBus();
 
             services.AddSingleton<ICommandHandler<AddValueCommand, Result>, AddValueCommandHandler>();
-            services.AddSingleton<EventDispatcher>();
+            services.AddSingleton<EventBus>();
 
             var provider = services.BuildServiceProvider();
-            var bus = provider.GetRequiredService<IEventDispatcher>().Initialize();
-
-            bus.RegisterCommandHandler<AddValueCommandHandler>();
+            var bus = provider.GetRequiredService<IEventBus>();
 
             // Act
             var result = await bus.Send(new AddValueCommand(10));
@@ -39,17 +34,14 @@ namespace Faster.EventBus.Tests
             // Arrange
             var services = new ServiceCollection();
 
-            services.AddEventBus(configure: (options) =>
-            {
-                options.AutoScan = true;
-            });
+            services.AddEventBus();
 
             // Required for auto register, leftovers from different tests...
             services.AddSingleton<IList<string>, List<string>>();
             services.AddSingleton<MyDependency>();
 
             var provider = services.BuildServiceProvider();
-            var bus = provider.GetRequiredService<IEventDispatcher>().Initialize();
+            var bus = provider.GetRequiredService<IEventBus>();
 
             // Act
             var result = await bus.Send(new AddValueCommand(10));
@@ -64,19 +56,14 @@ namespace Faster.EventBus.Tests
             var handler = new AddValueCommandHandler();
 
             var services = new ServiceCollection();
-            services.AddEventBus(configure: (options) =>
-            {
-                options.AutoScan = false;
-            });
+            services.AddEventBus();
 
             services.AddSingleton<ICommandHandler<AddValueCommand, Result>>(handler);
-            services.AddSingleton<EventDispatcher>();
+            services.AddSingleton<EventBus>();
 
             var provider = services.BuildServiceProvider();
-            var bus = provider.GetRequiredService<IEventDispatcher>().Initialize();
-
-            bus.RegisterCommandHandler<AddValueCommandHandler>();
-
+            var bus = provider.GetRequiredService<IEventBus>();
+                     
             await bus.Send(new AddValueCommand(30));
 
             Assert.Equal(30, handler.LastValue);

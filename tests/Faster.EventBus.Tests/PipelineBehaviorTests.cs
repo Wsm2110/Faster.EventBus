@@ -1,5 +1,6 @@
 ﻿using Faster.EventBus.Contracts;
 using Faster.EventBus.Extensions;
+using Faster.EventBus.Shared;
 using global::Faster.EventBus.Core;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -11,20 +12,15 @@ public class PipelineBehaviorTests
     public async Task PipelineBehaviors_ShouldExecuteInCorrectOrderAutoScann()
     {
         var services = new ServiceCollection();
-        services.AddEventBus(configure: (options) =>
-        {
-            options.AutoScan = true;
-        });
+        services.AddEventBus();
 
         // Auto scan also scanns handlers from other tests, thus since we use autoscan... we have to register these types manually
         services.AddSingleton<IList<string>, List<string>>();
         services.AddSingleton<MyDependency>();
 
-        services.AddSingleton<EventDispatcher>();
-
         var provider = services.BuildServiceProvider();
-        var bus = provider.GetRequiredService<IEventDispatcher>()
-            .Initialize();
+        var bus = provider.GetRequiredService<IEventBus>();
+         
 
         await bus.Send(new TestPipeline());
 
@@ -38,24 +34,18 @@ public class PipelineBehaviorTests
     public async Task PipelineBehaviors_ShouldExecuteInCorrectOrder()
     {
         var services = new ServiceCollection();
-        services.AddEventBus(configure: (options) =>
-        {
-            options.AutoScan = false;
-        });
+        services.AddEventBus();
 
         services.AddSingleton<IList<string>, List<string>>();
-        services.AddSingleton<ICommandHandler<TestPipeline, Result>, PipelineTestHandler>();
-        services.AddSingleton<ICommandPipelineBehavior<TestPipeline, Result>, FirstBehavior>();
-        services.AddSingleton<ICommandPipelineBehavior<TestPipeline, Result>, SecondBehavior>();
+      
+    //    services.AddTransient(typeof(IPipelineBehavior<,>), typeof(FirstBehavior<,>));
+    //    services.AddTransient(typeof(IPipelineBehavior<,>), typeof(SecondBehavior<,>));
 
-        services.AddSingleton<EventDispatcher>();
+        services.AddSingleton<EventBus>();
 
         var provider = services.BuildServiceProvider();
-        var bus = provider.GetRequiredService<IEventDispatcher>().Initialize();
-
-        // Required since auto register is off
-        bus.RegisterCommandHandler<PipelineTestHandler>();
-
+        var bus = provider.GetRequiredService<IEventBus>();
+         
         await bus.Send(new TestPipeline());
 
         var execution = provider.GetRequiredService<IList<string>>();
@@ -75,9 +65,9 @@ public class PipelineTestHandler(IList<string> exec) : ICommandHandler<TestPipel
     }
 }
 
-public class FirstBehavior(IList<string> exec) : ICommandPipelineBehavior<TestPipeline, Result>
+public class FirstBehavior(IList<string> exec) : IPipelineBehavior<TestPipeline, Result>
 {
-    public async ValueTask<Result> Handle(TestPipeline cmd, CancellationToken ct, CommandHandlerDelegate<Result> next)
+    public async ValueTask<Result> Handle(TestPipeline command, CommandBehaviorDelegate<Result> next, CancellationToken ct)
     {
         exec.Add("first-before");
         var result = await next();
@@ -86,10 +76,9 @@ public class FirstBehavior(IList<string> exec) : ICommandPipelineBehavior<TestPi
     }
 }
 
-public class SecondBehavior(IList<string> exec) : ICommandPipelineBehavior<TestPipeline, Result>
-{
-
-    public async ValueTask<Result> Handle(TestPipeline cmd, CancellationToken ct, CommandHandlerDelegate<Result> next)
+public class SecondBehavior(IList<string> exec) : IPipelineBehavior<TestPipeline, Result>
+{ 
+    public async ValueTask<Result> Handle(TestPipeline command, CommandBehaviorDelegate<Result> next, CancellationToken ct)
     {
         exec.Add("second-before");
         var result = await next();

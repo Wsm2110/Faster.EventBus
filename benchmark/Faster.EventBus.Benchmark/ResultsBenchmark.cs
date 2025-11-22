@@ -1,6 +1,5 @@
 ﻿using BenchmarkDotNet.Attributes;
 using BenchmarkDotNet.Order;
-using Faster.EventBus;
 using MediatR;
 
 [MemoryDiagnoser]
@@ -8,7 +7,7 @@ using MediatR;
 [RankColumn]
 public class ResultBenchmarks
 {
-    private EventDispatcher _faster;
+    private Faster.EventBus.EventBus _faster;
     private IMediator _mediatr;
 
     // Parameter that controls simulated load size

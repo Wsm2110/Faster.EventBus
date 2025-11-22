@@ -9,11 +9,10 @@ namespace Faster.EventBus.Extensions;
 /// Provides extension methods for registering the EventBus infrastructure,
 /// including automatic discovery of command handlers, event handlers, and pipeline behaviors.
 /// </summary>
-
 public static class ServiceProviderExtensions
 {
     /// <summary>
-    /// Registers the <see cref="EventDispatcher"/> and scans assemblies for handlers implementing:
+    /// Registers the <see cref="EventBus"/> and scans assemblies for handlers implementing:
     /// <list type="bullet">
     ///   <item><description><see cref="ICommandHandler{TCommand,TResponse}"/> for command processing</description></item>
     ///   <item><description><see cref="IEventHandler{TEvent}"/> for event subscription</description></item>
@@ -31,50 +30,42 @@ public static class ServiceProviderExtensions
 
     public static IServiceCollection AddEventBus(
         this IServiceCollection services,
-        Action<EventBusOptions>? configure = null,
         params Assembly[] assemblies)
     {
-        // Build option instance to know AutoScan before DI container exists
-        var options = new EventBusOptions();
-
-        configure?.Invoke(options);
-
-        // Persist config to DI
-        services.Configure(configure ?? (_ => { }));
-
         // Scan calling assembly if none provided
         if (assemblies == null || assemblies.Length == 0)
             assemblies = new[] { Assembly.GetCallingAssembly() };
 
-        // Always register dispatcher
+        // Core Services
+        services.AddSingleton<IPipelineFactory, PipelineFactory>();
+
+        // Main API - Registered as implemented interfaces;
+        services.AddSingleton<IEventBus, EventBus>();
+        services.AddSingleton<ICommandDispatcher, CommandDispatcher>();
         services.AddSingleton<IEventDispatcher, EventDispatcher>();
 
-        // Only auto-register handlers if AutoScan == true
-        if (options.AutoScan)
-        {
-            var commandHandlerType = typeof(ICommandHandler<,>);
-            var eventHandlerType = typeof(IEventHandler<>);
-            var behaviorType = typeof(ICommandPipelineBehavior<,>);
+        var commandHandlerType = typeof(ICommandHandler<,>);
+        var eventHandlerType = typeof(IEventHandler<>);
+        var behaviorType = typeof(IPipelineBehavior<,>);
 
-            foreach (var type in assemblies.SelectMany(a => a.GetTypes()))
+        foreach (var type in assemblies.SelectMany(a => a.GetTypes()))
+        {
+            if (type.IsAbstract || type.IsInterface)
+                continue;
+
+            foreach (var iface in type.GetInterfaces())
             {
-                if (type.IsAbstract || type.IsInterface)
+                if (!iface.IsGenericType)
                     continue;
 
-                foreach (var iface in type.GetInterfaces())
+                var genericDef = iface.GetGenericTypeDefinition();
+
+                if (genericDef == commandHandlerType ||
+                    genericDef == eventHandlerType ||
+                    genericDef == behaviorType)
+
                 {
-                    if (!iface.IsGenericType)
-                        continue;
-
-                    var genericDef = iface.GetGenericTypeDefinition();
-
-                    if (genericDef == commandHandlerType ||
-                        genericDef == eventHandlerType ||
-                        genericDef == behaviorType)
-
-                    {
-                        services.AddSingleton(iface, type);
-                    }
+                    services.AddSingleton(iface, type);
                 }
             }
         }

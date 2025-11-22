@@ -1,67 +1,59 @@
-using System;
-using System.Threading;
-using System.Threading.Tasks;
+﻿namespace Faster.EventBus.Contracts;
 
-namespace Faster.EventBus.Contracts
-{
-    /// <summary>
-    /// Represents a command that expects a response of type <typeparamref name="TResponse"/>.
-    /// </summary>
-    /// <typeparam name="TResponse">The type of the response, usually Result.</typeparam>
-    public interface ICommand<TResponse> { }
+///
+/// <summary>
+/// Represents the delegate used by the core command handler.
+/// This is the final step in the pipeline: it executes the real command handler.
+/// 
+/// When the pipeline reaches the end (no more behaviors to process),
+/// this delegate is invoked to run:
+///     handler.Handle(command, ct)
+///
+/// It returns a <see cref="ValueTask{TResponse}"/> because command handlers
+/// may run asynchronously and we want minimal allocation overhead.
+/// </summary>
+/// <typeparam name="TResponse">The type returned by the command handler.</typeparam>
+public delegate ValueTask<TResponse> CommandHandlerDelegate<TResponse>();
 
-    /// <summary>
-    /// Marker interface for an event (publish/subscribe).
-    /// </summary>
-    public interface IEvent { }
 
-    /// <summary>
-    /// Handles a command and returns a ValueTask of <typeparamref name="TResponse"/>.
-    /// </summary>
-    /// <typeparam name="TCommand">Type of the command.</typeparam>
-    /// <typeparam name="TResponse">Type of the response, usually Result.</typeparam>
-    public interface ICommandHandler<TCommand, TResponse>
-        where TCommand : ICommand<TResponse>
-    {
-        /// <summary>
-        /// Handles the given command.
-        /// </summary>
-        ValueTask<TResponse> Handle(TCommand command, CancellationToken ct);
-    }
+/// <summary>
+/// Represents the delegate passed to each pipeline behavior so that
+/// the behavior can invoke the next step in the pipeline.
+///
+/// Each behavior receives a function called <c>next</c>, which either:
+///   - Calls the next behavior in the chain, or
+///   - Calls the core command handler if this is the last behavior.
+///
+/// This enables middleware patterns such as logging, validation, metrics,
+/// retries, authorization, etc.
+/// </summary>
+/// <typeparam name="TResponse">The response type returned by the overall pipeline.</typeparam>
+public delegate ValueTask<TResponse> CommandBehaviorDelegate<TResponse>();
 
-    /// <summary>
-    /// Handles an event. There can be many handlers for one event type.
-    /// </summary>
-    /// <typeparam name="TEvent">Event type.</typeparam>
-    public interface IEventHandler<TEvent>
-        where TEvent : IEvent
-    {
-        /// <summary>
-        /// Handles the given event.
-        /// </summary>
-        ValueTask Handle(TEvent evt, CancellationToken ct);
-    }
 
-    /// <summary>
-    /// Delegate used by pipeline behaviors to call the next element in the chain.
-    /// </summary>
-    /// <typeparam name="TResponse">Type of response, usually Result.</typeparam>
-    public delegate ValueTask<TResponse> CommandHandlerDelegate<TResponse>();
-
-    /// <summary>
-    /// Represents a pipeline behavior (middleware) that wraps command handling,
-    /// for example for logging, validation, timing, retry, etc.
-    /// </summary>
-    /// <typeparam name="TCommand">Command type.</typeparam>
-    /// <typeparam name="TResponse">Response type, usually Result.</typeparam>
-    public interface ICommandPipelineBehavior<TCommand, TResponse> where TCommand : ICommand<TResponse>
-    {
-        /// <summary>
-        /// Handles the command and either processes it or calls the next delegate.
-        /// </summary>
-        ValueTask<TResponse> Handle(
-            TCommand command,
-            CancellationToken ct,
-            CommandHandlerDelegate<TResponse> next);
-    }
-}
+/// <summary>
+/// Represents the compiled pipeline delegate that executes the full pipeline,
+/// constructed by the <see cref="IPipelineFactory"/> and stored in cache.
+///
+/// This delegate is invoked by the command sender and performs the full sequence:
+///   1. Run all pipeline behaviors in order (if any)
+///   2. Finally execute the command handler
+///
+/// All required dependencies are passed in because this delegate may be reused
+/// many times without needing to re-resolve dependencies.
+///
+/// <example>
+/// Example internal pipeline execution chain:
+///     LoggingBehavior → ValidationBehavior → Handler
+/// </example>
+/// </summary>
+/// <typeparam name="TResponse">The type returned from the command handler.</typeparam>
+/// <param name="provider">The scoped DI provider used to resolve services.</param>
+/// <param name="command">The command instance being executed.</param>
+/// <param name="ct">Optional cancellation token.</param>
+/// <returns>A <see cref="ValueTask{TResponse}"/> representing the result.</returns>
+public delegate ValueTask<TResponse> CommandPipeline<TResponse>(
+    IServiceProvider provider,
+    ICommand<TResponse> command,
+    CancellationToken ct
+);

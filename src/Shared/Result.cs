@@ -1,6 +1,6 @@
 using System;
 
-namespace Faster.EventBus.Core
+namespace Faster.EventBus.Shared
 {
     /// <summary>
     /// Represents the outcome of an operation without a value.

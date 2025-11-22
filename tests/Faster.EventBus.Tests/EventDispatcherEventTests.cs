@@ -13,19 +13,14 @@ public class EventDispatcherEventTests
         var handler2 = new NumberAddedHandler();
 
         var services = new ServiceCollection();
-        services.AddEventBus(configure: (options) =>
-        {
-            options.AutoScan = false;
-        });
+        services.AddEventBus();
 
         services.AddSingleton<IEventHandler<NumberAddedEvent>>(handler1);
         services.AddSingleton<IEventHandler<NumberAddedEvent>>(handler2);
-        services.AddSingleton<EventDispatcher>();
+        services.AddSingleton<EventBus>();
 
         var provider = services.BuildServiceProvider();
-        var bus = provider.GetRequiredService<IEventDispatcher>().Initialize();
-
-        bus.Subscribe<NumberAddedEvent>();
+        var bus = provider.GetRequiredService<IEventBus>();
 
         bus.Publish(new NumberAddedEvent(99));
 

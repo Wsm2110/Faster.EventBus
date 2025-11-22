@@ -1,5 +1,5 @@
 ﻿using System;
-using Faster.EventBus.Core;
+using Faster.EventBus.Shared;
 using Xunit;
 
 namespace Faster.EventBus.Tests;
