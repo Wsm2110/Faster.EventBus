@@ -1,8 +1,6 @@
-using Faster.EventBus;
 using Faster.EventBus.Contracts;
 using Faster.EventBus.Extensions;
 using Faster.EventBus.Samples.Commands;
-using Faster.EventBus.Shared;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace EventBus.ConsoleSample
@@ -36,7 +34,7 @@ namespace EventBus.ConsoleSample
             bus.Publish(new UserCreated("Alice"));
 
             // 5. Orchestrate many commandhandlers aka Usecae
-            result = await bus.Run<CheckoutRequest, Result>(new CheckoutRequest(Guid.NewGuid()));
+            result = await bus.Run(new CheckoutRequest(Guid.NewGuid()));
             Console.WriteLine($"Checkout result: {result.IsSuccess}");
 
             Console.WriteLine("Done. Press any key to exit.");

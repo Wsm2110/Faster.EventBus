@@ -46,8 +46,7 @@ namespace Faster.EventBus.Contracts
         /// <returns>A <see cref="ValueTask{TResponse}"/> representing the asynchronous command result.</returns>
         ValueTask<TResponse> Send<TResponse>(ICommand<TResponse> command, CancellationToken ct = default);
 
-
-        ValueTask<TResponse> Run<TRequest, TResponse>(TRequest request, CancellationToken ct = default);
+        ValueTask<TResponse> Run<TResponse>(IUseCase<TResponse> useCase, CancellationToken ct = default);
 
     }
 }

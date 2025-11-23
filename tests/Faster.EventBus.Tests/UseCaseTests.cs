@@ -23,7 +23,7 @@ public sealed class UseCaseTests
         var bus = provider.GetRequiredService<IEventBus>();
 
         // Act
-        var result = await bus.Run<TestUseCaseRequest, Result>(new TestUseCaseRequest("X"));
+        var result = await bus.Run(new TestUseCaseRequest("X"));
 
         // Assert
         Assert.False(result.IsSuccess);
@@ -31,10 +31,9 @@ public sealed class UseCaseTests
     }
 }
 
-public record TestUseCaseRequest(string Value);
+public record TestUseCaseRequest(string Value) : IUseCase<Result>;
 
-public sealed class TestUseCaseHandler :
-    IUseCaseHandler<TestUseCaseRequest, Result>
+public sealed class TestUseCaseHandler : IUseCaseHandler<TestUseCaseRequest, Result>
 {
     public ValueTask<Result> Handle(TestUseCaseRequest request, CancellationToken ct = default)
         => ValueTask.FromResult(Result.Failure("Use case failed"));

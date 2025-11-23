@@ -5,7 +5,7 @@ using Faster.EventBus.Contracts;
 using Faster.EventBus.Shared;
 using Microsoft.Extensions.DependencyInjection;
 
-public sealed record CheckoutRequest(Guid OrderId);
+public sealed record CheckoutRequest(Guid OrderId) : IUseCase<Result>;
 
 public sealed record PlaceOrderCommand(Guid OrderId) : ICommand<Result>;
 public sealed record ChargePaymentCommand(Guid OrderId) : ICommand<Result>;
@@ -79,20 +79,6 @@ public sealed class FakeCommandDispatcher : ICommandDispatcher
         var handlerType = typeof(ICommandHandler<,>).MakeGenericType(command.GetType(), typeof(TResponse));
         dynamic handler = _provider.GetRequiredService(handlerType);
         return await handler.Handle((dynamic)command, ct);
-    }
-}
-
-public sealed class FakeUseCaseDispatcher : IUseCaseDispatcher
-{
-    private readonly IServiceProvider _provider;
-
-    public FakeUseCaseDispatcher(IServiceProvider provider)
-        => _provider = provider;
-
-    public async ValueTask<TResponse> Execute<TRequest, TResponse>(TRequest request, CancellationToken ct = default)
-    {
-        var handler = _provider.GetRequiredService<IUseCaseHandler<TRequest, TResponse>>();
-        return await handler.Handle(request, ct);
     }
 }
 
