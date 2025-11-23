@@ -38,7 +38,7 @@ public sealed class UseCaseDispatcher(IServiceProvider provider) : IUseCaseDispa
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public ValueTask<TResponse> Execute<TResponse>(
         IUseCase<TResponse> request,
-        CancellationToken ct = default)      
+        CancellationToken ct = default)
     {
         // Retrieve runtime request type. (This handles polymorphic request subclasses.)
         var requestType = request.GetType();
@@ -108,9 +108,7 @@ public sealed class UseCaseDispatcher(IServiceProvider provider) : IUseCaseDispa
 
         // Compile lambda:
         // (provider, request, ct) => handler.Handle((TRequest)request, ct)
-        var lambda = Expression.Lambda<
-            Func<IServiceProvider, IUseCase<TResponse>, CancellationToken, ValueTask<TResponse>>
-        >(
+        var lambda = Expression.Lambda<Func<IServiceProvider, IUseCase<TResponse>, CancellationToken, ValueTask<TResponse>>>(
             handleCall,
             providerParam,
             requestParam,
